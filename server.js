@@ -4,11 +4,11 @@ import { spawn } from "child_process";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
 app.use(cors());
 
 app.get("/", (_, res) => res.send("YT Downloader Backend OK"));
 
-// Download endpoint
 app.get("/download", (req, res) => {
   const { url, format } = req.query;
   if (!url) return res.status(400).send("Missing url");
@@ -17,19 +17,20 @@ app.get("/download", (req, res) => {
   res.setHeader("Content-Type", "application/octet-stream");
   res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
 
-  // Spawn yt-dlp to stream directly
   const args = ["-f", format || "best", "-o", "-", url];
+  console.log("Downloading:", url, "format:", format || "best");
+
   const yt = spawn("yt-dlp", args);
 
   yt.stdout.pipe(res);
 
-  yt.stderr.on("data", (d) => console.error(d.toString()));
+  yt.stderr.on("data", (data) => console.error(data.toString()));
+
   yt.on("close", (code) => {
     if (code !== 0) console.error("yt-dlp exited with code", code);
     else console.log("Download finished successfully");
   });
 
-  // Kill yt-dlp if client cancels
   res.on("close", () => {
     yt.kill();
     console.log("Client disconnected, killed yt-dlp");
